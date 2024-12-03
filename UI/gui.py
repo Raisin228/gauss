@@ -1,203 +1,150 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
+import sys
+
+from PyQt5 import QtGui
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QRadioButton, QCheckBox, QPushButton, QTableWidget,
+    QSpinBox, QGroupBox
+)
 
 
-class UiSolutionMethod(object):
-    def __init__(self, Solution_method):
-        self.table_widget_for_func, self.table_widget = None, None
-        self.sell_size_w, self.sell_size_h = 100, 30
+class OptimizationApp(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.basis_label, self.basis_layout = None, None
+        self.basis_checkboxes, self.lower_table = None, None
+        self.table_layout, self.solve_button, self.upper_table = None, None, None
+        self.apply_button, self.step_mode_radio = None, None
+        self.auto_mode_radio, self.given_basis_radio = None, None
+        self.artificial_basis_radio, self.max_radio = None, None
+        self.min_radio, self.con_spinbox = None, None
+        self.con_label, self.var_spinbox, self.var_label = None, None, None
+        self.setWindowTitle("Симплекс метод")
+        self.init_ui()
+        self.setMinimumSize(600, 600)
 
-        Solution_method.setObjectName("Solution_method")
-        Solution_method.resize(1150, 880)
-        Solution_method.setMinimumSize(500, 500)
-        font = QtGui.QFont()
-        font.setPointSize(15)
-        Solution_method.setFont(font)
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("../../../Downloads/cryptocurrency_crypto_ethereum_icon_230245.png"),
-                       QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        Solution_method.setWindowIcon(icon)
-        self.centralwidget = QtWidgets.QWidget(Solution_method)
-        self.centralwidget.setObjectName("centralwidget")
-        self.horizontalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
-        self.horizontalLayoutWidget.setGeometry(QtCore.QRect(10, 20, 321, 80))
-        self.horizontalLayoutWidget.setObjectName("horizontalLayoutWidget")
-        self.horizontalLayout = QtWidgets.QHBoxLayout(self.horizontalLayoutWidget)
-        self.horizontalLayout.setSizeConstraint(QtWidgets.QLayout.SetDefaultConstraint)
-        self.horizontalLayout.setContentsMargins(0, 0, 5, 0)
-        self.horizontalLayout.setObjectName("horizontalLayout")
-        self.label = QtWidgets.QLabel(self.horizontalLayoutWidget)
-        font = QtGui.QFont()
-        font.setPointSize(15)
-        self.label.setFont(font)
-        self.label.setScaledContents(False)
-        self.label.setWordWrap(False)
-        self.label.setObjectName("label")
-        self.horizontalLayout.addWidget(self.label)
-        self.spinBox = QtWidgets.QSpinBox(self.horizontalLayoutWidget)
-        font = QtGui.QFont()
-        font.setFamily("MS Shell Dlg 2")
-        self.spinBox.setFont(font)
-        self.spinBox.setMaximum(16)
-        self.spinBox.setProperty("value", 5)
-        self.spinBox.setObjectName("spinBox")
-        self.horizontalLayout.addWidget(self.spinBox)
-        self.horizontalLayoutWidget_2 = QtWidgets.QWidget(self.centralwidget)
-        self.horizontalLayoutWidget_2.setGeometry(QtCore.QRect(10, 120, 321, 81))
-        self.horizontalLayoutWidget_2.setObjectName("horizontalLayoutWidget_2")
-        self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.horizontalLayoutWidget_2)
-        self.horizontalLayout_2.setContentsMargins(0, 0, 5, 0)
-        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.label_2 = QtWidgets.QLabel(self.horizontalLayoutWidget_2)
-        font = QtGui.QFont()
-        font.setPointSize(15)
-        self.label_2.setFont(font)
-        self.label_2.setScaledContents(False)
-        self.label_2.setAlignment(QtCore.Qt.AlignCenter)
-        self.label_2.setWordWrap(False)
-        self.label_2.setObjectName("label_2")
-        self.horizontalLayout_2.addWidget(self.label_2)
-        self.spinBox_2 = QtWidgets.QSpinBox(self.horizontalLayoutWidget_2)
-        self.spinBox_2.setMaximum(16)
-        self.spinBox_2.setProperty("value", 5)
-        self.spinBox_2.setObjectName("spinBox_2")
-        self.horizontalLayout_2.addWidget(self.spinBox_2)
-        self.verticalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(10, 220, 321, 82))
-        self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
-        self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
-        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout.setObjectName("verticalLayout")
-        self.label_3 = QtWidgets.QLabel(self.verticalLayoutWidget)
-        font = QtGui.QFont()
-        font.setPointSize(15)
-        self.label_3.setFont(font)
-        self.label_3.setScaledContents(False)
-        self.label_3.setAlignment(QtCore.Qt.AlignCenter)
-        self.label_3.setWordWrap(False)
-        self.label_3.setObjectName("label_3")
-        self.verticalLayout.addWidget(self.label_3)
-        self.horizontalLayout_4 = QtWidgets.QHBoxLayout()
-        self.horizontalLayout_4.setObjectName("horizontalLayout_4")
-        self.radioButton_2 = QtWidgets.QRadioButton(self.verticalLayoutWidget)
-        self.radioButton_2.setObjectName("radioButton_2")
-        self.horizontalLayout_4.addWidget(self.radioButton_2)
-        self.radioButton = QtWidgets.QRadioButton(self.verticalLayoutWidget)
-        self.radioButton.setLayoutDirection(QtCore.Qt.LeftToRight)
-        self.radioButton.setObjectName("radioButton")
-        self.horizontalLayout_4.addWidget(self.radioButton)
-        self.verticalLayout.addLayout(self.horizontalLayout_4)
-        self.verticalLayoutWidget_2 = QtWidgets.QWidget(self.centralwidget)
-        self.verticalLayoutWidget_2.setGeometry(QtCore.QRect(10, 320, 321, 94))
-        self.verticalLayoutWidget_2.setObjectName("verticalLayoutWidget_2")
-        self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.verticalLayoutWidget_2)
-        self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout_2.setObjectName("verticalLayout_2")
-        self.label_4 = QtWidgets.QLabel(self.verticalLayoutWidget_2)
-        self.label_4.setAlignment(QtCore.Qt.AlignCenter)
-        self.label_4.setObjectName("label_4")
-        self.verticalLayout_2.addWidget(self.label_4)
-        self.radioButton_3 = QtWidgets.QRadioButton(self.verticalLayoutWidget_2)
-        self.radioButton_3.setObjectName("radioButton_3")
-        self.verticalLayout_2.addWidget(self.radioButton_3)
-        self.radioButton_4 = QtWidgets.QRadioButton(self.verticalLayoutWidget_2)
-        self.radioButton_4.setObjectName("radioButton_4")
-        self.verticalLayout_2.addWidget(self.radioButton_4)
-        self.pushButton = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton.setGeometry(QtCore.QRect(10, 530, 321, 81))
-        self.pushButton.setObjectName("pushButton")
-        self.pushButton.clicked.connect(self.show_table)
+    def init_ui(self):
+        main_layout = QVBoxLayout()
 
-        self.verticalLayoutWidget_3 = QtWidgets.QWidget(self.centralwidget)
-        self.verticalLayoutWidget_3.setGeometry(QtCore.QRect(10, 430, 321, 81))
-        self.verticalLayoutWidget_3.setObjectName("verticalLayoutWidget_3")
-        self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.verticalLayoutWidget_3)
-        self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout_3.setObjectName("verticalLayout_3")
-        self.label_5 = QtWidgets.QLabel(self.verticalLayoutWidget_3)
-        self.label_5.setAlignment(QtCore.Qt.AlignCenter)
-        self.label_5.setObjectName("label_5")
-        self.verticalLayout_3.addWidget(self.label_5)
-        self.comboBox = QtWidgets.QComboBox(self.verticalLayoutWidget_3)
-        self.comboBox.setObjectName("comboBox")
-        self.comboBox.addItem("")
-        self.comboBox.addItem("")
-        self.verticalLayout_3.addWidget(self.comboBox)
-        Solution_method.setCentralWidget(self.centralwidget)
-        self.statusbar = QtWidgets.QStatusBar(Solution_method)
-        self.statusbar.setObjectName("statusbar")
-        Solution_method.setStatusBar(self.statusbar)
-        self.menubar = QtWidgets.QMenuBar(Solution_method)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1150, 34))
-        self.menubar.setObjectName("menubar")
-        self.menuHi = QtWidgets.QMenu(self.menubar)
-        self.menuHi.setObjectName("menuHi")
-        self.menu = QtWidgets.QMenu(self.menubar)
-        self.menu.setObjectName("menu")
-        self.menu_2 = QtWidgets.QMenu(self.menubar)
-        self.menu_2.setObjectName("menu_2")
-        Solution_method.setMenuBar(self.menubar)
-        self.menuHi.addSeparator()
-        self.menuHi.addSeparator()
-        self.menubar.addAction(self.menuHi.menuAction())
-        self.menubar.addAction(self.menu_2.menuAction())
-        self.menubar.addAction(self.menu.menuAction())
+        input_layout = QHBoxLayout()
 
-        self.retranslateUi(Solution_method)
-        QtCore.QMetaObject.connectSlotsByName(Solution_method)
+        left_panel = QVBoxLayout()
 
-    def show_table(self):
-        """Таблица для ввода коэффициентов"""
-        self.horizontalLayout.removeWidget(self.table_widget_for_func)
+        self.var_label = QLabel("Количество переменных:")
+        self.var_spinbox = QSpinBox()
+        self.var_spinbox.setMinimum(1)
+        self.var_spinbox.setMaximum(16)
+        self.var_spinbox.setValue(5)
+        left_panel.addWidget(self.var_label)
+        left_panel.addWidget(self.var_spinbox)
 
-        self.table_widget_for_func = QtWidgets.QTableWidget(1, self.spinBox.value() + 1, self.centralwidget)
-        self.table_widget_for_func.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
-        self.table_widget_for_func.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
-        total_width = self.sell_size_w * (self.spinBox.value() + 1) + self.sell_size_w // 2 + 5
-        self.table_widget_for_func.setGeometry(350, 45, total_width, self.sell_size_h * 2 + 10)
-        self.table_widget_for_func.setHorizontalHeaderLabels(
-            [f'x{i}' for i in range(1, self.spinBox.value() + 1)] + ['b'])
-        self.table_widget_for_func.setVerticalHeaderLabels(['f0(x)'])
+        self.con_label = QLabel("Количество ограничений:")
+        self.con_spinbox = QSpinBox()
+        self.con_spinbox.setMinimum(1)
+        self.con_spinbox.setMaximum(16)
+        self.con_spinbox.setValue(5)
+        left_panel.addWidget(self.con_label)
+        left_panel.addWidget(self.con_spinbox)
 
-        self.horizontalLayout.removeWidget(self.table_widget)
-        self.table_widget = QtWidgets.QTableWidget(self.spinBox_2.value(), self.spinBox.value() + 1, self.centralwidget)
-        self.table_widget.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
-        self.table_widget.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        opt_group = QGroupBox("Задача оптимизации")
+        opt_layout = QHBoxLayout()
+        self.min_radio = QRadioButton("min")
+        self.max_radio = QRadioButton("max")
+        self.min_radio.setChecked(True)
+        opt_layout.addWidget(self.min_radio)
+        opt_layout.addWidget(self.max_radio)
+        opt_group.setLayout(opt_layout)
+        left_panel.addWidget(opt_group)
 
-        self.table_widget.horizontalHeader().hide()
-        self.table_widget.setGeometry(350, 150,
-                                      self.sell_size_w * (self.spinBox.value() + 1) + self.table_widget.columnWidth(0),
-                                      self.sell_size_h * self.spinBox_2.value() + self.table_widget.columnWidth(0))
-        print(self.sell_size_h * self.spinBox_2.value())
-        self.table_widget.setVerticalHeaderLabels([f"f{i}(x)" for i in range(1, self.spinBox_2.value() + 1)])
+        basis_group = QGroupBox("Базис")
+        basis_layout = QHBoxLayout()
+        self.artificial_basis_radio = QRadioButton("Искусственный")
+        self.given_basis_radio = QRadioButton("Заданный")
+        self.artificial_basis_radio.setChecked(True)
+        basis_layout.addWidget(self.artificial_basis_radio)
+        basis_layout.addWidget(self.given_basis_radio)
+        basis_group.setLayout(basis_layout)
+        left_panel.addWidget(basis_group)
 
-        self.table_widget_for_func.show()
-        self.table_widget.show()
+        mode_group = QGroupBox("Режим решения")
+        mode_layout = QHBoxLayout()
+        self.auto_mode_radio = QRadioButton("Автоматический")
+        self.step_mode_radio = QRadioButton("Пошаговый")
+        self.auto_mode_radio.setChecked(True)
+        mode_layout.addWidget(self.auto_mode_radio)
+        mode_layout.addWidget(self.step_mode_radio)
+        mode_group.setLayout(mode_layout)
+        left_panel.addWidget(mode_group)
 
-    def retranslateUi(self, Solution_method):
-        _translate = QtCore.QCoreApplication.translate
-        Solution_method.setWindowTitle(_translate("Solution_method", "Simplex Method lab"))
-        self.label.setText(_translate("Solution_method", "Количество переменных:"))
-        self.label_2.setText(_translate("Solution_method", "Количество ограничений:"))
-        self.label_3.setText(_translate("Solution_method", "Задача оптимизации"))
-        self.radioButton_2.setText(_translate("Solution_method", "min"))
-        self.radioButton.setText(_translate("Solution_method", "max"))
-        self.label_4.setText(_translate("Solution_method", "Режим решения"))
-        self.radioButton_3.setText(_translate("Solution_method", "Автоматический"))
-        self.radioButton_4.setText(_translate("Solution_method", "Пошаговый"))
-        self.pushButton.setText(_translate("Solution_method", "Применить"))
-        self.label_5.setText(_translate("Solution_method", "Метод решения"))
-        self.comboBox.setItemText(0, _translate("Solution_method", "Симплекс"))
-        self.comboBox.setItemText(1, _translate("Solution_method", "Графический"))
-        self.menuHi.setTitle(_translate("Solution_method", "Условия задачи"))
-        self.menu.setTitle(_translate("Solution_method", "Графический метод"))
-        self.menu_2.setTitle(_translate("Solution_method", "Симплекс метод"))
+        self.apply_button = QPushButton("Применить")
+        self.apply_button.clicked.connect(self.build_tables)
+        left_panel.addWidget(self.apply_button)
+
+        input_layout.addLayout(left_panel)
+
+        self.table_layout = QVBoxLayout()
+        input_layout.addLayout(self.table_layout)
+
+        main_layout.addLayout(input_layout)
+
+        self.solve_button = QPushButton("Решить задачу")
+        self.solve_button.hide()
+        main_layout.addWidget(self.solve_button)
+
+        self.setLayout(main_layout)
+
+    def build_tables(self):
+        for i in reversed(range(self.table_layout.count())):
+            widget = self.table_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        num_vars = self.var_spinbox.value()
+        num_constraints = self.con_spinbox.value()
+
+        self.upper_table = QTableWidget(1, num_vars + 1)
+        self.upper_table.setHorizontalHeaderLabels([f"x{i + 1}" for i in range(num_vars)] + ["b"])
+        self.upper_table.setVerticalHeaderLabels(["f0(x)"])
+        self.table_layout.addWidget(self.upper_table)
+
+        self.lower_table = QTableWidget(num_constraints, num_vars + 1)
+        self.lower_table.setHorizontalHeaderLabels([f"x{i + 1}" for i in range(num_vars)] + ["b"])
+        self.lower_table.setVerticalHeaderLabels([f"f{i + 1}(x)" for i in range(num_constraints)])
+        self.table_layout.addWidget(self.lower_table)
+
+        while self.basis_checkboxes and len(self.basis_checkboxes) > 0:
+            widget = self.basis_checkboxes.pop(0)
+            if widget:
+                widget.deleteLater()
+            if self.basis_label:
+                self.basis_layout.removeWidget(self.basis_label)
+
+        if self.given_basis_radio.isChecked():
+            self.basis_layout = QVBoxLayout()
+            self.basis_label = QLabel("Базисные переменные:")
+            self.basis_layout.addWidget(self.basis_label)
+
+            self.basis_checkboxes = []
+            for i in range(num_vars):
+                checkbox = QCheckBox(f"x{i + 1}")
+                self.basis_checkboxes.append(checkbox)
+                self.basis_layout.addWidget(checkbox)
+
+            self.table_layout.addLayout(self.basis_layout)
+        self.solve_button.show()
 
 
 if __name__ == "__main__":
-    import sys
+    app = QApplication(sys.argv)
 
-    app = QtWidgets.QApplication(sys.argv)
-    Solution_method = QtWidgets.QMainWindow()
-    ui = UiSolutionMethod(Solution_method)
-    Solution_method.show()
+    icon = QtGui.QIcon()
+    icon.addPixmap(QtGui.QPixmap("icon_s.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+    app.setWindowIcon(icon)
+
+    font = QFont()
+    font.setPointSize(16)
+    app.setFont(font)
+
+    window = OptimizationApp()
+    window.show()
     sys.exit(app.exec_())
