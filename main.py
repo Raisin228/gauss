@@ -1,139 +1,219 @@
+import sys
 from fractions import Fraction
-from typing import Tuple, List, Union
+
+from PyQt5 import QtGui
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QRadioButton, QCheckBox, QPushButton, QTableWidget,
+    QSpinBox, QGroupBox, QMenuBar, QMenu, QAction, QFileDialog, QTableWidgetItem)
+
+from io_bound_operations import IOOperations
 
 
-class CustomError(Exception):
-    """Что-то пошло не так. Сообщаем пользователю об этом"""
+class OptimizationApp(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.menu_bar, self.file_menu, self.open_action = None, None, None
+        self.basis_label, self.basis_layout = None, None
+        self.basis_checkboxes, self.lower_table = None, None
+        self.table_layout, self.solve_button, self.upper_table = None, None, None
+        self.apply_button, self.step_mode_radio = None, None
+        self.auto_mode_radio, self.given_basis_radio = None, None
+        self.artificial_basis_radio, self.max_radio = None, None
+        self.min_radio, self.con_spinbox = None, None
+        self.con_label, self.var_spinbox, self.var_label = None, None, None
+        self.setWindowTitle("Симплекс метод")
+        self.init_ui()
+        self.setMinimumSize(600, 600)
 
+    def init_ui(self):
+        main_layout = QVBoxLayout()
 
-def rg_matrix(m: List[List[Fraction]]) -> int:
-    """Вычисляем ранг матрицы (кол-во независимых строк т.е ненулевых)"""
-    independent_row = 0
-    for i in m:
-        if any(map(lambda num: num != 0, i)):
-            independent_row += 1
-    return independent_row
+        # Создание меню
+        self.menu_bar = QMenuBar(self)
+        self.file_menu = QMenu("Файл", self)
+        self.menu_bar.addMenu(self.file_menu)
 
+        self.open_action = QAction("Открыть файл", self)
+        self.open_action.triggered.connect(self.open_file)
+        self.file_menu.addAction(self.open_action)
+        main_layout.setMenuBar(self.menu_bar)
 
-def improved_print(*args, sep=' ', end='\n', file=None) -> None:
-    """Стероидный print"""
-    if file is None:
-        print(*args, sep=sep, end=end)
-    else:
-        with open('output.txt', 'a') as file_obj:
-            print(*args, sep=sep, end=end, file=file_obj)
+        input_layout = QHBoxLayout()
+        left_panel = QVBoxLayout()
 
+        self.var_label = QLabel("Количество переменных:")
+        self.var_spinbox = QSpinBox()
+        self.var_spinbox.setMinimum(1)
+        self.var_spinbox.setMaximum(16)
+        self.var_spinbox.setValue(5)
+        left_panel.addWidget(self.var_label)
+        left_panel.addWidget(self.var_spinbox)
 
-def matrix_output(m: List[List[Fraction]], header: List[str], to_file: Union[bool, None] = None) -> None:
-    """Вывод матрицы на консоль"""
-    if to_file:
-        # почистили файл от старых данных
-        with open('output.txt', 'w'):
-            ...
+        self.con_label = QLabel("Количество ограничений:")
+        self.con_spinbox = QSpinBox()
+        self.con_spinbox.setMinimum(1)
+        self.con_spinbox.setMaximum(16)
+        self.con_spinbox.setValue(5)
+        left_panel.addWidget(self.con_label)
+        left_panel.addWidget(self.con_spinbox)
 
-    max_el_len = 1
-    for i in m:
-        for j in i:
-            max_el_len = max(len(str(j)), max_el_len)
-    indent = max(max(map(lambda s: len(s), header)), max_el_len) + 2
-    improved_print(*map(lambda num: str(num).ljust(indent), header), sep='', file=to_file)
-    for row in m:
-        for el in row:
-            improved_print(str(el).ljust(indent), end='', file=to_file)
-        improved_print(file=to_file)
-    improved_print(file=to_file)
+        opt_group = QGroupBox("Задача оптимизации")
+        opt_layout = QHBoxLayout()
+        self.min_radio = QRadioButton("min")
+        self.max_radio = QRadioButton("max")
+        self.min_radio.setChecked(True)
+        opt_layout.addWidget(self.min_radio)
+        opt_layout.addWidget(self.max_radio)
+        opt_group.setLayout(opt_layout)
+        left_panel.addWidget(opt_group)
 
+        basis_group = QGroupBox("Базис")
+        basis_layout = QHBoxLayout()
+        self.artificial_basis_radio = QRadioButton("Искусственный")
+        self.given_basis_radio = QRadioButton("Заданный")
+        self.artificial_basis_radio.setChecked(True)
+        basis_layout.addWidget(self.artificial_basis_radio)
+        basis_layout.addWidget(self.given_basis_radio)
+        basis_group.setLayout(basis_layout)
+        left_panel.addWidget(basis_group)
 
-def get_data_from_file() -> Tuple[Tuple, Tuple, List, List]:
-    """Получить данные из файла"""
-    # file_name = input("Enter file name: ")
-    file_name = 'input_data.txt'
-    with open(file_name) as file:
-        cut_str = map(lambda s: s.strip(), file.readlines())
-        str_with_value = [row for row in cut_str if row]
-        values = list(map(lambda s: s.split(), str_with_value))
+        mode_group = QGroupBox("Режим решения")
+        mode_layout = QHBoxLayout()
+        self.auto_mode_radio = QRadioButton("Автоматический")
+        self.step_mode_radio = QRadioButton("Пошаговый")
+        self.auto_mode_radio.setChecked(True)
+        mode_layout.addWidget(self.auto_mode_radio)
+        mode_layout.addWidget(self.step_mode_radio)
+        mode_group.setLayout(mode_layout)
+        left_panel.addWidget(mode_group)
 
-        if len(values[0]) != 2:
-            raise CustomError('Размерность матрицы задаётся 2-я переменными m n')
-        try:
-            dimension = tuple(map(int, values[0]))
-            basic_variables = tuple(sorted(map(int, values[1])))
-        except ValueError:
-            raise CustomError('Переменные m n и индексы столбцов должны быть типа данных Int')
+        self.apply_button = QPushButton("Применить")
+        self.apply_button.clicked.connect(self.build_tables)
+        left_panel.addWidget(self.apply_button)
 
-        if len(basic_variables) != len(set(basic_variables)):
-            raise CustomError('Базисный столбец не должен повторяться')
-        try:
-            matrix = [list(map(lambda num: Fraction(num), values[ind])) for ind in range(2, len(values))]
-            if len(matrix) != dimension[0] or any(map(lambda s: len(s) != dimension[1], matrix)):
-                raise CustomError(f'Матрица неправильного размера. Ожидалась [{dimension[0]}X{dimension[1]}]')
-        except ValueError:
-            raise CustomError('Данные в матрице должны быть числа типа данных Int | Float')
-        title = [f'x{i}"' if i in basic_variables else f'x{i}' for i in range(1, dimension[1] + 1)]
+        input_layout.addLayout(left_panel)
 
-        rg_matrix(matrix)
+        self.table_layout = QVBoxLayout()
+        input_layout.addLayout(self.table_layout)
 
-        print('Исходная матрица')
-        matrix_output(matrix, title)
-        return dimension, basic_variables, matrix, title
+        main_layout.addLayout(input_layout)
 
+        self.solve_button = QPushButton("Решить задачу")
+        self.solve_button.hide()
+        main_layout.addWidget(self.solve_button)
+        self.solve_button.clicked.connect(self.solving_problem)
 
-def get_row(row: int, col: int, matrix: List[List[Fraction]]) -> Union[Exception, int]:
-    """Получить индекс строки с минимальным значением"""
-    ans, value = None, None
-    for i in range(row, len(matrix)):
-        if (tmp := abs(matrix[i][col - 1])) != 0 and (value is None or tmp < value):
-            value = abs(matrix[i][col - 1])
-            ans = i
-    if value is None:
-        raise CustomError('Базисный столбец = 0')
-    return ans
+        self.setLayout(main_layout)
 
+    def open_file(self):
+        """Диалоговое окно для выбора файла"""
+        file_name, _ = QFileDialog.getOpenFileName(self, "Открыть файл", "", "Text Files (*.txt);;All Files (*)")
 
-def change_row(cursor: int, new_row: int, matrix: List[List[Fraction]], title: List[str]) -> None:
-    """Меняет строки местами"""
-    if cursor != new_row:
-        print(f'Переставляю строки {cursor + 1} <-> {new_row + 1}')
-        matrix[cursor], matrix[new_row] = matrix[new_row], matrix[cursor]
-        matrix_output(matrix, title)
+        if file_name:
+            data = IOOperations.scan_data_from_file(file_name)
+            self.build_tables(data.quant_vars, data.quant_constr, data.basic_vars, data.function_coefficients,
+                              data.constraints)
 
+    def __del_previous_tables(self) -> None:
+        """Удаляем все таблицы с прошлых сеансов"""
+        for i in reversed(range(self.table_layout.count())):
+            widget = self.table_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
 
-def simplify_row(row: int, col: int, matrix: List[List[Fraction]], title: List[str]) -> None:
-    """Приводим элементы на гл.диагонали к 1"""
-    if matrix[row][col] not in [0, 1]:
-        divider = matrix[row][col]
-        print(f'Разделили все элементы {row + 1} строки на {divider}')
-        for k in range(len(matrix[row])):
-            matrix[row][k] /= divider
-        matrix_output(matrix, title)
+    def __set_fields(self, v: int, c: int) -> None:
+        """Заполняем поля интерфейса данными из файла"""
+        self.var_spinbox.setValue(v)
+        self.con_spinbox.setValue(c)
+        self.given_basis_radio.setChecked(True)
 
+    def __table_initialization(self, v: int, c: int) -> None:
+        """Объявление таблиц"""
+        self.upper_table = QTableWidget(1, v + 1)
+        self.upper_table.setHorizontalHeaderLabels([f"x{i + 1}" for i in range(v)] + ["b"])
+        self.upper_table.setVerticalHeaderLabels(["f0(x)"])
+        self.table_layout.addWidget(self.upper_table)
 
-def gauss_method(data: Tuple[Tuple, Tuple, List, List]) -> None:
-    """Метод Гаусса"""
-    title: List[str] = data[3]
-    b_var: Tuple[int] = data[1]
-    m: List[List[Fraction]] = data[2]
-    for i in range(len(b_var)):
-        non_zero_row = get_row(i, b_var[i], m)
-        change_row(i, non_zero_row, m, title)
-        simplify_row(i, b_var[i] - 1, m, title)
+        self.lower_table = QTableWidget(c, v + 1)
+        self.lower_table.setHorizontalHeaderLabels([f"x{i + 1}" for i in range(v)] + ["b"])
+        self.lower_table.setVerticalHeaderLabels([f"f{i + 1}(x)" for i in range(c)])
+        self.table_layout.addWidget(self.lower_table)
 
-        for j in range(len(m)):
-            if j == i:
-                continue
-            multiple = m[j][b_var[i] - 1] / m[i][b_var[i] - 1]
-            if multiple == 0:
-                continue
-            for k in range(len(m[j])):
-                m[j][k] -= m[i][k] * multiple
-            print(f"Из {j + 1} строки - {i + 1}-юу * {multiple}")
-            matrix_output(m, title)
-    if rg_matrix(m) != len(b_var):
-        print('ERROR (Stack above or down)')
-        raise CustomError(f'Неверное кол-во базисных переменных')
-    matrix_output(m, title, to_file=True)
+    @staticmethod
+    def __fill_tables_with_data(table_widget: QTableWidget, data: list[list[Fraction]]) -> None:
+        """Заполняем таблицу данными из файла"""
+        if data:
+            for row in range(table_widget.rowCount()):
+                for col in range(table_widget.columnCount()):
+                    table_widget.setItem(row, col, QTableWidgetItem(str(data[row][col])))
+
+    def __del_previous_checkboxes(self) -> None:
+        """Убираем предыдущие чекбоксы если они есть"""
+        while self.basis_checkboxes and len(self.basis_checkboxes) > 0:
+            widget = self.basis_checkboxes.pop(0)
+            if widget:
+                widget.deleteLater()
+            if self.basis_label:
+                self.basis_layout.removeWidget(self.basis_label)
+
+    def __show_checkbox_for_basis(self, v: int, b: list[int]) -> None:
+        """Отображаем поле для выбора базиса"""
+        if self.given_basis_radio.isChecked():
+            self.basis_layout = QVBoxLayout()
+            self.basis_label = QLabel("Базисные переменные:")
+            self.basis_layout.addWidget(self.basis_label)
+
+            self.basis_checkboxes = []
+            for i in range(v):
+                checkbox = QCheckBox(f"x{i + 1}")
+                checkbox.setProperty('value', i + 1)
+                if b and i + 1 in b:
+                    checkbox.setChecked(True)
+                self.basis_checkboxes.append(checkbox)
+                self.basis_layout.addWidget(checkbox)
+
+            self.table_layout.addLayout(self.basis_layout)
+
+    def build_tables(self, num_vars: int = None, num_constraints: int = None, basis: list[int] = None,
+                     f_coff: list[list[Fraction]] = None, constr: list[list[Fraction]] = None):
+        """Отображение таблиц на основе информации из файла/выберенных параметров"""
+        self.__del_previous_tables()
+
+        # если таблицы строим из файла то заполняем соответствующие поля данными
+        if not num_vars and not num_constraints and not basis:
+            num_vars = self.var_spinbox.value()
+            num_constraints = self.con_spinbox.value()
+        else:
+            self.__set_fields(num_vars, num_constraints)
+
+        self.__table_initialization(num_vars, num_constraints)
+
+        self.__fill_tables_with_data(self.upper_table, f_coff)
+        self.__fill_tables_with_data(self.lower_table, constr)
+
+        self.__del_previous_checkboxes()
+
+        self.__show_checkbox_for_basis(num_vars, basis)
+
+        self.solve_button.show()
+
+    def solving_problem(self):
+        res = IOOperations.scan_data_from_gui_tables(self)
+        print(res)
 
 
 if __name__ == "__main__":
-    information = get_data_from_file()
-    gauss_method(information)
+    app = QApplication(sys.argv)
+
+    icon = QtGui.QIcon()
+    icon.addPixmap(QtGui.QPixmap("UI/icon_s.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+    app.setWindowIcon(icon)
+
+    font = QFont()
+    font.setPointSize(16)
+    app.setFont(font)
+
+    window = OptimizationApp()
+    window.show()
+    sys.exit(app.exec_())
