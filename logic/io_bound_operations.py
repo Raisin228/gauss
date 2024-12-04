@@ -2,7 +2,7 @@ from fractions import Fraction
 
 from PyQt5.QtWidgets import QTableWidget, QMessageBox
 
-from storage_task import DataProblem
+from logic.storage_task import DataProblem
 
 
 class IOOperations:
@@ -102,3 +102,28 @@ class IOOperations:
                            f'Ошибка -> {ex.__class__.__name__}.\n'
                            f'Подробности: {ex}\n'
                            f'Проверьте ввод данных!')
+
+    @classmethod
+    def improved_print(cls, *args, sep=' ', end='\n', file=None) -> None:
+        """Стероидный print"""
+        if file is None:
+            print(*args, sep=sep, end=end)
+        else:
+            with open('output.txt', 'a') as file_obj:
+                print(*args, sep=sep, end=end, file=file_obj)
+
+    @classmethod
+    def matrix_output(cls, m: list[list[Fraction]], header: list[str], to_file: bool | None = None) -> None:
+        """Вывод матрицы на консоль"""
+
+        max_el_len = 1
+        for i in m:
+            for j in i:
+                max_el_len = max(len(str(j)), max_el_len)
+        indent = max(max(map(lambda s: len(s), header)), max_el_len) + 2
+        cls.improved_print(*map(lambda num: str(num).ljust(indent), header), sep='', file=to_file)
+        for row in m:
+            for el in row:
+                cls.improved_print(str(el).ljust(indent), end='', file=to_file)
+            cls.improved_print(file=to_file)
+        cls.improved_print(file=to_file)

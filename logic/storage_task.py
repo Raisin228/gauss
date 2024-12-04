@@ -6,6 +6,6 @@ from fractions import Fraction
 class DataProblem:
     quant_vars: int
     quant_constr: int
-    function_coefficients: list[list[Fraction]]
+    function_coefficients: list[Fraction]
     constraints: list[list[Fraction]]
     basic_vars: list[int] | None = None

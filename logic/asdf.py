@@ -20,7 +20,7 @@ def improved_print(*args, sep=' ', end='\n', file=None) -> None:
     if file is None:
         print(*args, sep=sep, end=end)
     else:
-        with open('output.txt', 'a') as file_obj:
+        with open('../data/output.txt', 'a') as file_obj:
             print(*args, sep=sep, end=end, file=file_obj)
 
 
@@ -28,7 +28,7 @@ def matrix_output(m: List[List[Fraction]], header: List[str], to_file: Union[boo
     """Вывод матрицы на консоль"""
     if to_file:
         # почистили файл от старых данных
-        with open('output.txt', 'w'):
+        with open('../data/output.txt', 'w'):
             ...
 
     max_el_len = 1
@@ -47,7 +47,7 @@ def matrix_output(m: List[List[Fraction]], header: List[str], to_file: Union[boo
 def get_data_from_file() -> Tuple[Tuple, Tuple, List, List]:
     """Получить данные из файла"""
     # file_name = input("Enter file name: ")
-    file_name = 'input_data.txt'
+    file_name = '../data/input_data.txt'
     with open(file_name) as file:
         cut_str = map(lambda s: s.strip(), file.readlines())
         str_with_value = [row for row in cut_str if row]
@@ -83,7 +83,7 @@ def get_row(row: int, col: int, matrix: List[List[Fraction]]) -> Union[Exception
     ans, value = None, None
     for i in range(row, len(matrix)):
         if (tmp := abs(matrix[i][col - 1])) != 0 and (value is None or tmp < value):
-            value = abs(matrix[i][col - 1])
+            value = tmp
             ans = i
     if value is None:
         raise CustomError('Базисный столбец = 0')
