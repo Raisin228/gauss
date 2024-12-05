@@ -1,7 +1,8 @@
+from copy import deepcopy
 from fractions import Fraction
 
 from logic.io_bound_operations import IOOperations
-from logic.storage_task import DataProblem
+from logic.storage_task import DataProblem, SimplexInput, SimplexResult
 
 
 class CustomError(Exception):
@@ -93,8 +94,10 @@ class SimplexMethod:
 
     @classmethod
     def express_fun_free_vars(cls, func_cof: list[Fraction], expressed_through_basis: list[list[Fraction]],
-                              b_vars: list[int]) -> dict:
+                              b_vars: list[int], is_max_task: bool) -> dict:
         """Выражает ф-ию только через свободные переменные (после метода Гаусса)"""
+        if is_max_task:
+            func_cof = [-k for k in func_cof]
 
         accumulator = {}
         for i in range(len(func_cof)):
@@ -126,45 +129,145 @@ class SimplexMethod:
         return min_row
 
     @classmethod
-    def simplex(cls, down_row: dict[str, Fraction], m: list[list[Fraction]]):
+    def one_step(cls, info: SimplexInput):
+        m = info.table
+        old_down_row = deepcopy(info.down_row)
+        down_row = info.down_row
+        base_vars = info.b_vars
         ans = [[None for _ in range(len(m[0]))] for _ in range(len(m))]
-        while any(map(lambda item: item[0] != 'coeff' and item[1] < 0, down_row.items())):
-            for k, v in down_row.items():
-                if k != 'coeff' and v < 0:
-                    col = int(k.split('x')[-1]) - 1
-                    row = cls.__find_support_el(m, col)
 
-                    # новый опорный элемент
-                    ans[row][col] = 1 / m[row][col]
+        for i in range(len(down_row)):
+            k, value = next(iter(down_row[i].items()))
+            if k != 'coeff' and value < 0:
 
-                    # заполняем строку
-                    for element_ind in range(len(m[row])):
-                        if element_ind != col:
-                            ans[row][element_ind] = m[row][element_ind] / m[row][col]
-                    # TODO размерность ans нужно изменить т.е исключив переменные базисные
-                    # заполняю колонку где опорный элемент
-                    for element_row_ind in range(len(m)):
-                        if element_row_ind != row:
-                            ans[element_row_ind][col] = (-1/m[row][col]) * m[element_row_ind][col]
+                col = i
+                row = cls.__find_support_el(m, col)
 
-                    # считаем строки оставшиеся
-                    for i in range(len(ans)):
-                        for j in range(len(ans[0])):
-                            if ans[i][j] is None:
-                                ans[i][j] = m[i][j] - m[i][col] * ans[row][j]
+                # меняем свободные и базисные переменные местами
+                key_b_var = next(iter(down_row[col].keys()))
+                b_var_val = down_row[col][key_b_var]
+                buf = base_vars[row]
+                base_vars[row] = int(key_b_var.split('x')[-1])
+                down_row[col].pop(key_b_var)
+                down_row[col] = {f'x{buf}': b_var_val}
 
-                    IOOperations.improved_print(ans)
-                    input()
-                    break
+                # новый опорный элемент
+                ans[row][col] = 1 / m[row][col]
+
+                # заполняем строку
+                for element_ind in range(len(m[row])):
+                    if element_ind != col:
+                        ans[row][element_ind] = m[row][element_ind] / m[row][col]
+
+                # заполняю колонку где опорный элемент
+                for element_row_ind in range(len(m)):
+                    if element_row_ind != row:
+                        ans[element_row_ind][col] = (-1 / m[row][col]) * m[element_row_ind][col]
+
+                ke, v = next(iter(down_row[col].items()))
+                down_row[col][ke] = -1 / m[row][col] * v
+
+                # считаем строки оставшиеся
+                for i in range(len(ans)):
+                    for j in range(len(ans[0])):
+                        if ans[i][j] is None:
+                            ans[i][j] = m[i][j] - m[i][col] * ans[row][j]
+
+                # пересчёт коэффициентов ф-ии
+                for d in range(len(down_row)):
+                    if d == col:
+                        continue
+                    ke, v = next(iter(down_row[d].items()))
+                    down_row[d][ke] = v - next(iter(old_down_row[col].values())) * ans[row][d]
+
+                return SimplexInput(ans, down_row, base_vars)
+
+    @classmethod
+    def __need_to_continue(cls, f_coeff: list[dict]) -> bool:
+        """Нужно ли продолжать крутить метод автоматически?"""
+        for d in f_coeff:
+            key, value = next(iter(d.items()))
+            if value < 0:
+                return True
+        return False
+
+    @classmethod
+    def __get_ans(cls, result: list[list[Fraction]], coeffs: list[dict], base: list[int],
+                  is_maximiz: bool) -> SimplexResult | None:
+        """Из полученной симплекс таблицы выражаем вектор x(...) и значение ф-ии"""
+        x_vals = [None for _ in range(len(coeffs) - 1 + len(base))]
+        for i in range(len(base)):
+            x_vals[base[i] - 1] = result[i][-1]
+        x_vals = [0 if val is None else val for val in x_vals]
+        if any(map(lambda n: n < 0, x_vals)):
+            print('Нет решений')
+            return None
+
+        buf = [-d['coeff'] for d in coeffs if 'coeff' in d]
+        if is_maximiz:
+            return SimplexResult(x_vals, -buf[0])
+        return SimplexResult(x_vals, buf[0])
+
+    @classmethod
+    def __check_not_limited(cls, m: list[list[Fraction]], coeff: list[dict]) -> bool:
+        for j in range(len(coeff)):
+            key, value = next(iter(coeff[j].items()))
+            if value < 0:
+                for row in m:
+                    if row[j] > 0:
+                        return False
+        return True
+
+    @classmethod
+    def simplex(cls, info: SimplexInput, is_max: bool):
+        while True:
+            res = cls.one_step(info)
+
+            if res is None:
+                print(cls.__get_ans(info.table, info.down_row, info.b_vars, is_max))
+                break
+            elif not cls.__need_to_continue(res.down_row):
+                print(cls.__get_ans(res.table, res.down_row, res.b_vars, is_max))
+                break
+            elif cls.__check_not_limited(res.table, res.down_row):
+                print('Ф-ия не ограничена. Оптимальное реш.отсутствует')
+                break
+            info = res
+
+
+    @classmethod
+    def __compress_data(cls, m: list[list[Fraction]], b_vars_index: list[int], func_coff: dict) -> SimplexInput:
+        """Чистим таблицу от базисных столбцов. (Привели задачу к симплекс таблице)"""
+        without_b_vars = []
+
+        for row in m:
+            temp = []
+            for col in range(len(row)):
+                if col + 1 not in b_vars_index:
+                    temp.append(row[col])
+            without_b_vars.append(temp)
+
+        buf = []
+        for key in sorted(func_coff):
+            if key != 'coeff':
+                buf.append({key: func_coff[key]})
+        buf.append({'coeff': -func_coff['coeff']})
+
+        return SimplexInput(without_b_vars, buf, b_vars_index)
 
     @classmethod
     def solving(cls, wind):
         with open('output.txt', 'w'):
             ...
 
-        data = IOOperations.scan_data_from_gui_tables(wind)
-        title = [f'x{i}"' if i in data.basic_vars else f'x{i}' for i in range(1, data.quant_vars + 1)]
-        temp = cls.__gauss_method(title, data)
+        try:
+            data = IOOperations.scan_data_from_gui_tables(wind)
+            title = [f'x{i}"' if i in data.basic_vars else f'x{i}' for i in range(1, data.quant_vars + 1)]
+            temp = cls.__gauss_method(title, data)
 
-        expressed = cls.express_fun_free_vars(data.function_coefficients, temp[0], data.basic_vars)
-        cls.simplex(expressed, temp[0])
+            expressed = cls.express_fun_free_vars(data.function_coefficients, temp[0], data.basic_vars,
+                                                  wind.max_radio.isChecked())
+            prep_data = cls.__compress_data(temp[0], data.basic_vars, expressed)
+            cls.simplex(prep_data, is_max=wind.max_radio.isChecked())
+        except Exception as ex:
+            print(ex)

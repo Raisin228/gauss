@@ -9,3 +9,16 @@ class DataProblem:
     function_coefficients: list[Fraction]
     constraints: list[list[Fraction]]
     basic_vars: list[int] | None = None
+
+
+@dataclass
+class SimplexInput:
+    table: list[list[Fraction]]
+    down_row: list[dict[str, Fraction]]
+    b_vars: list[int]
+
+
+@dataclass
+class SimplexResult:
+    x_vars: list[Fraction]
+    func_res: Fraction
