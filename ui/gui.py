@@ -1,44 +1,62 @@
-from fractions import Fraction
+from typing import List, Dict
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QMenuBar, QMenu, QAction, QHBoxLayout, QLabel, QSpinBox, QGroupBox, \
-    QRadioButton, QPushButton, QFileDialog, QTableWidget, QTableWidgetItem, QCheckBox
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import (
+    QMainWindow, QMenuBar, QMenu, QAction, QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QSpinBox, QGroupBox, QRadioButton, QPushButton, QTabWidget, QTableWidget, QTableWidgetItem, QFileDialog,
+    QCheckBox, QScrollArea
+)
+from fractions import Fraction
 
 from logic.io_bound_operations import IOOperations
 from logic.simplex_method import SimplexMethod
+from logic.storage_task import SimplexInput, SimplexResult
 
 
-class OptimizationApp(QWidget):
+class OptimizationApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.menu_bar, self.file_menu, self.open_action = None, None, None
-        self.basis_label, self.basis_layout = None, None
-        self.basis_checkboxes, self.lower_table = None, None
-        self.table_layout, self.solve_button, self.upper_table = None, None, None
-        self.apply_button, self.step_mode_radio = None, None
-        self.auto_mode_radio, self.given_basis_radio = None, None
-        self.artificial_basis_radio, self.max_radio = None, None
-        self.min_radio, self.con_spinbox = None, None
-        self.con_label, self.var_spinbox, self.var_label = None, None, None
+
+        self.open_action = None
+        self.file_menu = None
+        self.menu_bar = None
+        self.var_label = None
         self.setWindowTitle("Симплекс метод")
-        self.init_ui()
         self.setMinimumSize(600, 600)
 
+        self.basis_checkboxes = None
+
+        self.init_ui()
+
     def init_ui(self):
-        main_layout = QVBoxLayout()
+        # Создание виджета вкладок
+        self.tab_widget = QTabWidget()
+        self.setCentralWidget(self.tab_widget)
+
+        # Добавление вкладок
+        self.add_problem_conditions_tab()
+        self.add_result_tab()
 
         # Создание меню
         self.menu_bar = QMenuBar(self)
+        self.setMenuBar(self.menu_bar)
+
         self.file_menu = QMenu("Файл", self)
         self.menu_bar.addMenu(self.file_menu)
 
         self.open_action = QAction("Открыть файл", self)
         self.open_action.triggered.connect(self.open_file)
         self.file_menu.addAction(self.open_action)
-        main_layout.setMenuBar(self.menu_bar)
+
+    def add_problem_conditions_tab(self):
+        """Добавляем вкладку 'Условия задачи'."""
+        tab = QWidget()
+        main_layout = QVBoxLayout(tab)
 
         input_layout = QHBoxLayout()
         left_panel = QVBoxLayout()
 
+        # Лейблы и спинбоксы для ввода переменных и ограничений
         self.var_label = QLabel("Количество переменных:")
         self.var_spinbox = QSpinBox()
         self.var_spinbox.setMinimum(1)
@@ -55,6 +73,7 @@ class OptimizationApp(QWidget):
         left_panel.addWidget(self.con_label)
         left_panel.addWidget(self.con_spinbox)
 
+        # Группа для выбора задачи оптимизации
         opt_group = QGroupBox("Задача оптимизации")
         opt_layout = QHBoxLayout()
         self.min_radio = QRadioButton("min")
@@ -65,9 +84,11 @@ class OptimizationApp(QWidget):
         opt_group.setLayout(opt_layout)
         left_panel.addWidget(opt_group)
 
+        # Группа для выбора базиса
         basis_group = QGroupBox("Базис")
         basis_layout = QHBoxLayout()
         self.artificial_basis_radio = QRadioButton("Искусственный")
+        self.artificial_basis_radio.toggled.connect(self.__del_previous_checkboxes)
         self.given_basis_radio = QRadioButton("Заданный")
         self.artificial_basis_radio.setChecked(True)
         basis_layout.addWidget(self.artificial_basis_radio)
@@ -75,6 +96,7 @@ class OptimizationApp(QWidget):
         basis_group.setLayout(basis_layout)
         left_panel.addWidget(basis_group)
 
+        # Группа для выбора режима решения
         mode_group = QGroupBox("Режим решения")
         mode_layout = QHBoxLayout()
         self.auto_mode_radio = QRadioButton("Автоматический")
@@ -85,6 +107,7 @@ class OptimizationApp(QWidget):
         mode_group.setLayout(mode_layout)
         left_panel.addWidget(mode_group)
 
+        # Кнопка "Применить"
         self.apply_button = QPushButton("Применить")
         self.apply_button.clicked.connect(self.build_tables)
         left_panel.addWidget(self.apply_button)
@@ -93,15 +116,35 @@ class OptimizationApp(QWidget):
 
         self.table_layout = QVBoxLayout()
         input_layout.addLayout(self.table_layout)
-
         main_layout.addLayout(input_layout)
 
+        # Кнопка "Решить задачу"
         self.solve_button = QPushButton("Решить задачу")
         self.solve_button.hide()
-        main_layout.addWidget(self.solve_button)
         self.solve_button.clicked.connect(self.start_calculating)
+        main_layout.addWidget(self.solve_button)
 
-        self.setLayout(main_layout)
+        self.tab_widget.addTab(tab, "Условие задачи")
+
+    def add_result_tab(self):
+        """Добавляем вкладку 'Симплекс метод'."""
+        tab = QWidget()
+
+        # Создаем область с прокруткой
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)  # Автоматическая настройка содержимого
+
+        # Контейнер внутри области прокрутки
+        scroll_widget = QWidget()
+        self.scroll_layout = QVBoxLayout(scroll_widget)  # Макет для таблиц
+        scroll_area.setWidget(scroll_widget)  # Устанавливаем контейнер в область прокрутки
+
+        # Главный макет вкладки
+        self.simplex_layout = QVBoxLayout(tab)
+        self.simplex_layout.addWidget(scroll_area)  # Добавляем область прокрутки на вкладку
+
+        # Добавляем вкладку в интерфейс
+        self.tab_widget.addTab(tab, "Симплекс метод")
 
     def open_file(self):
         """Диалоговое окно для выбора файла"""
@@ -138,12 +181,25 @@ class OptimizationApp(QWidget):
         self.table_layout.addWidget(self.lower_table)
 
     @staticmethod
-    def __fill_tables_with_data(table_widget: QTableWidget, data: list[list[Fraction]]) -> None:
+    def __fill_tables_with_data(table_widget: QTableWidget, data: list[list[Fraction]], support: tuple[int] = None,
+                                down_row: List[Dict[str, Fraction]] = None) -> None:
         """Заполняем таблицу данными из файла"""
         if data:
-            for row in range(table_widget.rowCount()):
+            q_rows = table_widget.rowCount()
+            if down_row:
+                q_rows -= 1
+            for row in range(q_rows):
                 for col in range(table_widget.columnCount()):
-                    table_widget.setItem(row, col, QTableWidgetItem(str(data[row][col])))
+                    cell = QTableWidgetItem(str(data[row][col]))
+                    if support and row == support[0] and col == support[1]:
+                        cell.setBackground(QColor('#42aaff'))
+                    table_widget.setItem(row, col, cell)
+
+            # заполнили строку коэффициентов ф-ии
+            if down_row:
+                for i in range(len(down_row)):
+                    k, v = next(iter(down_row[i].items()))
+                    table_widget.setItem(table_widget.rowCount() - 1, i, QTableWidgetItem(str(down_row[i][k])))
 
     def __del_previous_checkboxes(self) -> None:
         """Убираем предыдущие чекбоксы если они есть"""
@@ -153,6 +209,8 @@ class OptimizationApp(QWidget):
                 widget.deleteLater()
             if self.basis_label:
                 self.basis_layout.removeWidget(self.basis_label)
+                self.basis_label.deleteLater()
+                self.basis_label = None
 
     def __show_checkbox_for_basis(self, v: int, b: list[int]) -> None:
         """Отображаем поле для выбора базиса"""
@@ -195,5 +253,63 @@ class OptimizationApp(QWidget):
 
         self.solve_button.show()
 
+    def __init_simplex_table(self, table: List[List[Fraction]], down_row: List[Dict[str, Fraction]],
+                             b_vars: List[int]) -> QTableWidget:
+        """Инициализируем симплекс таблицу (размер/заголовки/нейминг)"""
+        rows = len(table) + 1
+        table = QTableWidget(rows, len(table[0]))
+
+        table_width = sum(table.horizontalHeader().sectionSize(col) for col in range(table.columnCount())) + 50
+        table_width += table.verticalHeader().width()
+
+        table_height = sum(table.verticalHeader().sectionSize(row) for row in range(table.rowCount())) + 20
+        table_height += table.horizontalHeader().height()
+        table.setFixedSize(table_width, table_height)
+
+        custom_headers = []
+        for d in down_row:
+            key, value = next(iter(d.items()))
+            custom_headers.append(key)
+        table.setHorizontalHeaderLabels(custom_headers)
+
+        custom_row_naming = []
+        for var in b_vars:
+            custom_row_naming.append(f'x{var}')
+        table.setVerticalHeaderLabels(custom_row_naming + ['f(x)'])
+
+        self.scroll_layout.addWidget(table)
+        return table
+
+    @classmethod
+    def clear_previous_steps(cls, layout):
+        """Удаляем предыдущие шаги решения"""
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+            else:
+                del item
+
+    def display_step(self, data: SimplexInput, s_el: tuple[int]):
+        """Отобразить симплекс шаг"""
+        table = self.__init_simplex_table(data.table, data.down_row, data.b_vars)
+        self.__fill_tables_with_data(table, data.table, s_el, down_row=data.down_row)
+
+    def show_ans(self, result: SimplexResult | None | str):
+        """Вывод ответа"""
+        answer = QLabel()
+        if result is None:
+            answer.setText('Ответ: Нет решений')
+        elif result == 'Ф-ия не ограничена. Оптимальное реш.отсутствует':
+            answer.setText('Ответ: Ф-ия не ограничена. Оптимальное реш.отсутствует')
+        else:
+            prepare_vars = tuple(map(lambda n: str(n), result.x_vars))
+            print(prepare_vars)
+            answer.setText(f'Ответ: f({", ".join(prepare_vars)}) = {result.func_res}')
+        self.scroll_layout.addWidget(answer)
+
     def start_calculating(self):
         SimplexMethod.solving(self)
+
+#         todo сделать покраску других опорных элементов

@@ -128,7 +128,7 @@ class SimplexMethod:
         return accumulator
 
     @classmethod
-    def __find_support_el(cls, m: List[List[Fraction]], col: int) -> int:
+    def __find_support_row(cls, m: List[List[Fraction]], col: int) -> int:
         """Строка с опорным элементом в выбранном столбце"""
         min_row, min_val = 0, None
         for row in range(len(m)):
@@ -139,57 +139,65 @@ class SimplexMethod:
         return min_row
 
     @classmethod
+    def __find_support_el(cls, down_row: List[Dict[str, Fraction]], m: List[List[Fraction]]) -> tuple[int, int] | None:
+        """Строка и столбец с выбранным опорным эл"""
+        for i in range(len(down_row)):
+            k, value = next(iter(down_row[i].items()))
+            if k != 'coeff' and value < 0:
+                col: int = i
+                row: int = cls.__find_support_row(m, col)
+                return row, col
+
+    @classmethod
     def one_step(cls, info: SimplexInput) -> Optional[SimplexInput]:
         m: List[List[Fraction]] = info.table
         old_down_row: List[Dict[str, Fraction]] = deepcopy(info.down_row)
         down_row: List[Dict[str, Fraction]] = info.down_row
         base_vars: List[int] = info.b_vars
         ans: List[List[int | Fraction | None]] = [[None for _ in range(len(m[0]))] for _ in range(len(m))]
-        for i in range(len(down_row)):
-            k, value = next(iter(down_row[i].items()))
-            if k != 'coeff' and value < 0:
 
-                col: int = i
-                row: int = cls.__find_support_el(m, col)
+        if (el := cls.__find_support_el(down_row, m)) is None:
+            return
+        row, col = el
 
-                # меняем свободные и базисные переменные местами
-                key_b_var = next(iter(down_row[col].keys()))
-                b_var_val = down_row[col][key_b_var]
-                buf = base_vars[row]
-                base_vars[row] = int(key_b_var.split('x')[-1])
-                down_row[col].pop(key_b_var)
-                down_row[col] = {f'x{buf}': b_var_val}
+        # меняем свободные и базисные переменные местами
+        key_b_var = next(iter(down_row[col].keys()))
+        b_var_val = down_row[col][key_b_var]
+        buf = base_vars[row]
+        base_vars[row] = int(key_b_var.split('x')[-1])
+        down_row[col].pop(key_b_var)
+        down_row[col] = {f'x{buf}': b_var_val}
 
-                # новый опорный элемент
-                ans[row][col] = 1 / m[row][col]
+        # новый опорный элемент
+        ans[row][col] = 1 / m[row][col]
 
-                # заполняем строку
-                for element_ind in range(len(m[row])):
-                    if element_ind != col:
-                        ans[row][element_ind] = m[row][element_ind] / m[row][col]
+        # заполняем строку
+        for element_ind in range(len(m[row])):
+            if element_ind != col:
+                ans[row][element_ind] = m[row][element_ind] / m[row][col]
 
-                # заполняю колонку где опорный элемент
-                for element_row_ind in range(len(m)):
-                    if element_row_ind != row:
-                        ans[element_row_ind][col] = (-1 / m[row][col]) * m[element_row_ind][col]
+        # заполняю колонку где опорный элемент
+        for element_row_ind in range(len(m)):
+            if element_row_ind != row:
+                ans[element_row_ind][col] = (-1 / m[row][col]) * m[element_row_ind][col]
 
-                ke, v = next(iter(down_row[col].items()))
-                down_row[col][ke] = -1 / m[row][col] * v
+        ke, v = next(iter(down_row[col].items()))
+        down_row[col][ke] = -1 / m[row][col] * v
 
-                # считаем строки оставшиеся
-                for z in range(len(ans)):
-                    for j in range(len(ans[0])):
-                        if ans[z][j] is None:
-                            ans[z][j] = m[z][j] - m[z][col] * ans[row][j]
+        # считаем строки оставшиеся
+        for z in range(len(ans)):
+            for j in range(len(ans[0])):
+                if ans[z][j] is None:
+                    ans[z][j] = m[z][j] - m[z][col] * ans[row][j]
 
-                # пересчёт коэффициентов ф-ии
-                for d in range(len(down_row)):
-                    if d == col:
-                        continue
-                    ke, v = next(iter(down_row[d].items()))
-                    down_row[d][ke] = v - next(iter(old_down_row[col].values())) * ans[row][d]
+        # пересчёт коэффициентов ф-ии
+        for d in range(len(down_row)):
+            if d == col:
+                continue
+            ke, v = next(iter(down_row[d].items()))
+            down_row[d][ke] = v - next(iter(old_down_row[col].values())) * ans[row][d]
 
-                return SimplexInput(ans, down_row, base_vars)
+        return SimplexInput(ans, down_row, base_vars)
 
     @classmethod
     def __need_to_continue(cls, f_coeff: List[dict]) -> bool:
@@ -202,7 +210,7 @@ class SimplexMethod:
 
     @classmethod
     def __get_ans(cls, result: List[List[Fraction]], coeffs: List[dict], base: List[int],
-                  is_maximiz: bool) -> SimplexResult | None:
+                  is_maximiz: bool, wind, need_show: bool = True) -> SimplexResult | None:
         """Из полученной симплекс таблицы выражаем вектор x(...) и значение ф-ии"""
         x_vals: List[Fraction | int | None] = [None for _ in range(len(coeffs) - 1 + len(base))]
         for i in range(len(base)):
@@ -216,10 +224,14 @@ class SimplexMethod:
             print('Нет решений')
             return None
 
-        buf = [-d['coeff'] for d in coeffs if 'coeff' in d]
+        output = SimplexInput(result, coeffs, base)
+        buf = -next(iter(coeffs[-1].values()))
+        if need_show:
+            el = cls.__find_support_el(coeffs, result)
+            wind.display_step(output, el)
         if is_maximiz:
-            return SimplexResult(x_vals, -buf[0])
-        return SimplexResult(x_vals, buf[0])
+            return SimplexResult(x_vals, -buf)
+        return SimplexResult(x_vals, buf)
 
     @classmethod
     def __check_not_limited(cls, m: List[list[Fraction]], coeff: List[dict]) -> bool:
@@ -233,21 +245,31 @@ class SimplexMethod:
         return True
 
     @classmethod
-    def simplex(cls, info: SimplexInput, is_max: bool) -> None:
+    def simplex(cls, info: SimplexInput, wind, is_max: bool) -> None:
         """Автоматический шаг симплекс метода"""
+
+        wind.clear_previous_steps(wind.scroll_layout)
+        supp_pos = cls.__find_support_el(info.down_row, info.table)
+        wind.display_step(info, supp_pos)
         while True:
             res = cls.one_step(info)
 
             if res is None:
-                print(cls.__get_ans(info.table, info.down_row, info.b_vars, is_max))
+                answer = cls.__get_ans(info.table, info.down_row, info.b_vars, is_max, wind, False)
+                print(answer)
                 break
             elif not cls.__need_to_continue(res.down_row):
-                print(cls.__get_ans(res.table, res.down_row, res.b_vars, is_max))
+                answer = cls.__get_ans(res.table, res.down_row, res.b_vars, is_max, wind)
+                print(answer)
                 break
             elif cls.__check_not_limited(res.table, res.down_row):
                 print('Ф-ия не ограничена. Оптимальное реш.отсутствует')
+                answer = 'Ф-ия не ограничена. Оптимальное реш.отсутствует'
                 break
             info = res
+            supp_pos = cls.__find_support_el(info.down_row, info.table)
+            wind.display_step(info, supp_pos)
+        wind.show_ans(answer)
 
     @classmethod
     def __compress_data(cls, m: List[List[Fraction]], b_vars_index: List[int],
@@ -369,7 +391,7 @@ class SimplexMethod:
                 expressed = cls.express_fun_free_vars(data.function_coefficients, temp[0], data.basic_vars,
                                                       wind.max_radio.isChecked())
                 prep_data = cls.__compress_data(temp[0], data.basic_vars, expressed)
-                cls.simplex(prep_data, is_max=wind.max_radio.isChecked())
+                cls.simplex(prep_data, wind, is_max=wind.max_radio.isChecked())
             else:
                 # метод искусственного базиса
                 new_fun_len = data.quant_vars + data.quant_constr

@@ -1,11 +1,54 @@
 ----------The Gauss method for checking basic variables and expressions of freedom. through the basic----------
-Divided all the elements of the 1 row into 2
-x1"   x2    x3"   
-1     -5/2  1/2   5/2   
-4     1     2     11    
+From the 2th line - 1th * 2
+x1"  x2"  x3"  x4   x5   x6   
+1    -1   2    0    3    -2   12   
+0    3    -7   4    -7   7    -4   
+-1   2    0    3    -4   1    15   
 
-From the 2th line - 1th * 4
-x1"   x2    x3"   
-1     -5/2  1/2   5/2   
-0     11    0     1     
+From the 3th line - 1th * -1
+x1"  x2"  x3"  x4   x5   x6   
+1    -1   2    0    3    -2   12   
+0    3    -7   4    -7   7    -4   
+0    1    2    3    -1   -1   27   
+
+Setting the lines 2 <-> 3
+x1"  x2"  x3"  x4   x5   x6   
+1    -1   2    0    3    -2   12   
+0    1    2    3    -1   -1   27   
+0    3    -7   4    -7   7    -4   
+
+From the 1th line - 2th * -1
+x1"  x2"  x3"  x4   x5   x6   
+1    0    4    3    2    -3   39   
+0    1    2    3    -1   -1   27   
+0    3    -7   4    -7   7    -4   
+
+From the 3th line - 2th * 3
+x1"  x2"  x3"  x4   x5   x6   
+1    0    4    3    2    -3   39   
+0    1    2    3    -1   -1   27   
+0    0    -13  -5   -4   10   -85  
+
+Divided all the elements of the 3 row into -13
+x1"     x2"     x3"     x4      x5      x6      
+1       0       4       3       2       -3      39      
+0       1       2       3       -1      -1      27      
+0       0       1       5/13    4/13    -10/13  85/13   
+
+From the 1th line - 3th * 4
+x1"     x2"     x3"     x4      x5      x6      
+1       0       0       19/13   10/13   1/13    167/13  
+0       1       2       3       -1      -1      27      
+0       0       1       5/13    4/13    -10/13  85/13   
+
+From the 2th line - 3th * 2
+x1"     x2"     x3"     x4      x5      x6      
+1       0       0       19/13   10/13   1/13    167/13  
+0       1       0       29/13   -21/13  7/13    181/13  
+0       0       1       5/13    4/13    -10/13  85/13   
+
+x1"     x2"     x3"     x4      x5      x6      
+1       0       0       19/13   10/13   1/13    167/13  
+0       1       0       29/13   -21/13  7/13    181/13  
+0       0       1       5/13    4/13    -10/13  85/13   
 
